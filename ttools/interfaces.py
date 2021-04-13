@@ -189,7 +189,7 @@ class GANInterface(ModelInterface, abc.ABC):
 
         # Detach the inputs to avoid backprops
         if not backprop:
-            with torch.no_grad():
+            with th.no_grad():
                 result = self.discrim(*args)
         else:
             result = self.discrim(*args)
