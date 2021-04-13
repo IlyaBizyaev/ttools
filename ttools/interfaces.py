@@ -189,9 +189,12 @@ class GANInterface(ModelInterface, abc.ABC):
 
         # Detach the inputs to avoid backprops
         if not backprop:
-            args = [a.detach() for a in args]
+            with torch.no_grad():
+                result = self.discrim(*args)
+        else:
+            result = self.discrim(*args)
 
-        return self.discrim(*args)
+        return result
 
     def backward(self, batch, fwd_data):
         """Generic GAN backward step.
