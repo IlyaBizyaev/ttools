@@ -6,7 +6,7 @@ import torch as th
 
 from . import ModelInterface
 
-from .utils import get_logger
+from .utils import get_logger, plot_grad_flow
 
 
 LOG = get_logger(__name__)
@@ -37,13 +37,14 @@ class GANInterface(ModelInterface, abc.ABC):
     """
     def __init__(self, gen, discrim, lr=1e-4, ncritic=1, opt="rmsprop",
                  cuda=th.cuda.is_available(), gan_weight=1.0,
-                 max_grad_norm=None):
+                 max_grad_norm=None, should_plot_grad=False):
         super(GANInterface, self).__init__()
         self.gen = gen
         self.discrim = discrim
         self.ncritic = ncritic
         self.gan_weight = gan_weight
         self.max_grad_norm = max_grad_norm
+        self.should_plot_grad = should_plot_grad
 
         if self.gan_weight == 0:
             LOG.warning("GAN interface %s has gan_weight==0",
@@ -275,6 +276,8 @@ class GANInterface(ModelInterface, abc.ABC):
         self.opt_d.zero_grad()
 
         total_loss.backward()
+        if self.should_plot_grad:
+            plot_grad_flow(self.discrim.named_parameters(), "discriminator")
         if self.max_grad_norm is not None:
             nrm = th.nn.utils.clip_grad_norm_(self.discrim.parameters(),
                                               self.max_grad_norm)
@@ -305,6 +308,8 @@ class GANInterface(ModelInterface, abc.ABC):
 
         self.opt_g.zero_grad()
         total_loss.backward()
+        if self.should_plot_grad:
+            plot_grad_flow(self.gen.named_parameters(), "generator")
         if self.max_grad_norm is not None:
             nrm = th.nn.utils.clip_grad_norm_(self.gen.parameters(),
                                               self.max_grad_norm)
