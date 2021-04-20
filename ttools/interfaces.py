@@ -35,7 +35,8 @@ class GANInterface(ModelInterface, abc.ABC):
         max_grad_norm(None or scalar): clip gradients above that threshold if
             provided.
     """
-    def __init__(self, gen, discrim, lr=1e-4, ncritic=1, opt="rmsprop",
+    def __init__(self, gen, discrim, lr=1e-4, ncritic=1,
+                 gen_opt="rmsprop", disc_opt="rmsprop",
                  cuda=th.cuda.is_available(), gan_weight=1.0,
                  max_grad_norm=None, should_plot_grad=False):
         super(GANInterface, self).__init__()
@@ -69,26 +70,25 @@ class GANInterface(ModelInterface, abc.ABC):
         if self.discrim is not None:
             self.discrim.to(self.device)
 
-        self.opt_d = None
+        def make_opt(name: str, parameters, for_disc):
+            if name == "sgd":
+                return th.optim.SGD(parameters, lr=lr)
+            elif name == "adam":
+                if for_disc:
+                    LOG.warn("Using a momentum-based optimizer in the discriminator,"
+                             " this can be problematic.")
+                return th.optim.Adam(parameters, lr=lr, betas=(0.5, 0.999))
+            elif name == "rmsprop":
+                return th.optim.RMSprop(parameters, lr=lr)
+            else:
+                raise ValueError(f"Invalid optimizer {name}")
 
-        if opt == "sgd":
-            self.opt_g = th.optim.SGD(self.gen.parameters(), lr=lr)
-            if self.discrim is not None:
-                self.opt_d = th.optim.SGD(self.discrim.parameters(), lr=lr)
-        elif opt == "adam":
-            LOG.warn("Using a momentum-based optimizer in the discriminator,"
-                     " this can be problematic.")
-            self.opt_g = th.optim.Adam(
-                self.gen.parameters(), lr=lr, betas=(0.5, 0.999))
-            if self.discrim is not None:
-                self.opt_d = th.optim.Adam(
-                    self.discrim.parameters(), lr=lr, betas=(0.5, 0.999))
-        elif opt == "rmsprop":
-            self.opt_g = th.optim.RMSprop(self.gen.parameters(), lr=lr)
-            if self.discrim is not None:
-                self.opt_d = th.optim.RMSprop(self.discrim.parameters(), lr=lr)
+        self.opt_g = make_opt(gen_opt, self.gen.parameters(), for_disc=False)
+
+        if self.discrim is None:
+            self.opt_d = None
         else:
-            raise ValueError("invalid optimizer %s" % opt)
+            self.opt_d = make_opt(disc_opt, self.discrim.parameters(), for_disc=True)
 
     def training_step(self, batch):
         fwd_data = self.forward(batch)
