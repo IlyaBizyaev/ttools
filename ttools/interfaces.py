@@ -224,6 +224,8 @@ class GANInterface(ModelInterface, abc.ABC):
             # Update the generator with only the non-GAN losses
             self.opt_g.zero_grad()
             extra_g_loss.backward()
+            if self.should_plot_grad:
+                plot_grad_flow(self.gen.named_parameters(), "generator (only extra loss)")
             if self.max_grad_norm is not None:
                 nrm = th.nn.utils.clip_grad_norm_(self.gen.parameters(),
                                                   self.max_grad_norm)
