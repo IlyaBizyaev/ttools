@@ -471,7 +471,9 @@ class Checkpointer(object):
             path(str): full path to the checkpoint to delete.
         """
         if path in self.sorted_checkpoints():
-            os.remove(os.path.join(self.root, path))
+            full_path = os.path.join(self.root, path)
+            open(full_path, 'w').close()  # Empty the file before deleting (in case it's on GDrive)
+            os.remove(full_path)
         else:
             LOG.warning("Trying to delete a checkpoint that does not exists.")
 
